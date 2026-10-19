@@ -1,0 +1,321 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STEAM Attendance</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #030817;
+  --panel: #07162d;
+  --blue: #159cff;
+  --cyan: #22d3ee;
+  --red: #ff244f;
+  --orange: #ff9c31;
+  --text: #eaf5ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: radial-gradient(ellipse at top left, #092b58, transparent 45%), var(--bg);
+  color: var(--text);
+  font-family: 'Kanit', Tahoma, sans-serif;
+}
+
+header {
+  padding: 24px;
+  border-bottom: 2px solid var(--red);
+  background: linear-gradient(100deg, #04142b, #082957, #30091f);
+  box-shadow: 0 5px 30px #159cff30;
+}
+
+h1 {
+  margin: 0;
+  letter-spacing: 3px;
+  color: var(--cyan);
+}
+
+h1 span { color: var(--red); }
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
+
+.panel {
+  background: linear-gradient(145deg, #07172f, #041025);
+  border: 1px solid #153b65;
+  border-radius: 14px;
+  padding: 20px;
+  margin-top: 18px;
+  box-shadow: 0 5px 25px #0005;
+}
+
+input, select, button {
+  font: inherit;
+  padding: 10px;
+  margin: 4px;
+  border: 1px solid #1b4a78;
+  border-radius: 7px;
+  background: #06152b;
+  color: white;
+}
+
+button {
+  cursor: pointer;
+  background: linear-gradient(110deg, #087de8, #0757c9);
+}
+
+button:hover { filter: brightness(1.2); }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.card {
+  background: #091e3c;
+  border: 1px solid var(--blue);
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.card strong {
+  display: block;
+  font-size: 28px;
+  color: var(--cyan);
+}
+
+.card.red { border-color: var(--red); }
+.card.red strong { color: var(--red); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #153b65;
+}
+
+th {
+  color: var(--cyan);
+  background: #0b2444;
+}
+
+tr:hover { background: #102642; }
+
+.orange { background: #ff9c3133; }
+.deep-orange { background: #f05b1b; }
+.red-alert { background: #e51e43; }
+
+.alert {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+@media(max-width:700px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .panel { overflow-x: auto; padding: 12px; }
+  table { min-width: 650px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <h1>STEAM <span>ATTENDANCE</span></h1>
+    <p>SCIENCE × TECHNOLOGY × ENGINEERING × ART × MATHEMATICS</p>
+    <p>เช็กชื่อวันนี้ เพื่ออนาคตที่ดีกว่า</p>
+  </div>
+</header>
+
+<div class="container">
+  <div class="cards">
+    <div class="card">นักเรียนทั้งหมด<strong id="total">0</strong></div>
+    <div class="card">มาเรียนวันนี้<strong id="present">0</strong></div>
+    <div class="card red">ขาดเรียนวันนี้<strong id="absent">0</strong></div>
+    <div class="card red">ต้องติดตาม<strong id="alerts">0</strong></div>
+  </div>
+
+  <section class="panel">
+    <h2>เพิ่มรายชื่อนักเรียน</h2>
+    <input id="name" placeholder="ชื่อ-นามสกุล">
+    <input id="number" placeholder="เลขที่">
+    <button onclick="addStudent()">+ เพิ่มรายชื่อ</button>
+  </section>
+
+  <section class="panel">
+    <h2>เช็กชื่อเข้าเรียน</h2>
+    <label>วันที่ <input type="date" id="date"></label>
+    <table>
+      <thead>
+        <tr><th>เลขที่</th><th>ชื่อ</th><th>สถานะ</th></tr>
+      </thead>
+      <tbody id="attendance"></tbody>
+    </table>
+    <button onclick="saveAttendance()">บันทึกการเช็กชื่อ</button>
+  </section>
+
+  <section class="panel">
+    <h2>รายงานสถิติ — เรียงจากขาดมากไปน้อย</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>อันดับ</th><th>เลขที่</th><th>ชื่อ</th>
+          <th>มา</th><th>ขาด</th><th>ลา</th><th>แจ้งเตือน</th>
+        </tr>
+      </thead>
+      <tbody id="statistics"></tbody>
+    </table>
+  </section>
+</div>
+
+<script>
+let students = JSON.parse(localStorage.getItem("steam_students") || "[]");
+let records = JSON.parse(localStorage.getItem("steam_records") || "{}");
+
+const $ = id => document.getElementById(id);
+const today = new Date();
+$("date").value =
+  `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+function safe(text) {
+  return String(text ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;",
+    '"':"&quot;", "'":"&#39;"
+  }[c]));
+}
+
+function persist() {
+  localStorage.setItem("steam_students", JSON.stringify(students));
+  localStorage.setItem("steam_records", JSON.stringify(records));
+}
+
+function addStudent() {
+  const name = $("name").value.trim();
+  const number = $("number").value.trim();
+
+  if (!name) return alert("กรุณากรอกชื่อนักเรียน");
+  if (students.some(s => s.name.toLowerCase() === name.toLowerCase()))
+    return alert("มีชื่อนี้แล้ว");
+
+  students.push({
+    id: Date.now().toString() + Math.random(),
+    name, number
+  });
+
+  $("name").value = "";
+  $("number").value = "";
+  persist();
+  render();
+}
+
+function renderAttendance() {
+  const day = records[$("date").value] || {};
+
+  $("attendance").innerHTML = students.map(s => `
+    <tr>
+      <td>${safe(s.number || "-")}</td>
+      <td>${safe(s.name)}</td>
+      <td>
+        <select id="status-${s.id}">
+          <option value="" ${!day[s.id] ? "selected" : ""}>ยังไม่เช็กชื่อ</option>
+          <option value="มา" ${day[s.id] === "มา" ? "selected" : ""}>มา</option>
+          <option value="ขาด" ${day[s.id] === "ขาด" ? "selected" : ""}>ขาด</option>
+          <option value="ลา" ${day[s.id] === "ลา" ? "selected" : ""}>ลา</option>
+        </select>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function saveAttendance() {
+  const date = $("date").value;
+  if (!date) return alert("กรุณาเลือกวันที่");
+
+  records[date] = records[date] || {};
+
+  students.forEach(s => {
+    const value = $("status-" + s.id).value;
+    if (value) records[date][s.id] = value;
+    else delete records[date][s.id];
+  });
+
+  if (!Object.keys(records[date]).length) delete records[date];
+
+  persist();
+  render();
+  alert("บันทึกเรียบร้อย");
+}
+
+function getStats(s) {
+  let present = 0, absent = 0, leave = 0;
+
+  Object.values(records).forEach(day => {
+    if (day[s.id] === "มา") present++;
+    if (day[s.id] === "ขาด") absent++;
+    if (day[s.id] === "ลา") leave++;
+  });
+
+  return {present, absent, leave};
+}
+
+function getAlert(n) {
+  if (n >= 6) return ["ขาด " + n + " ครั้ง", "red-alert"];
+  if (n === 5) return ["ขาด 5 ครั้ง", "deep-orange"];
+  if (n === 4) return ["ขาด 4 ครั้ง", "orange"];
+  return ["ปกติ", ""];
+}
+
+function renderStatistics() {
+  const list = students.map(s => ({...s, ...getStats(s)}))
+    .sort((a,b) => b.absent - a.absent ||
+      a.name.localeCompare(b.name, "th"));
+
+  $("statistics").innerHTML = list.map((s,i) => {
+    const [label, cls] = getAlert(s.absent);
+    return `
+      <tr class="${cls}">
+        <td>${i+1}</td>
+        <td>${safe(s.number || "-")}</td>
+        <td>${safe(s.name)}</td>
+        <td>${s.present}</td>
+        <td>${s.absent}</td>
+        <td>${s.leave}</td>
+        <td><span class="alert ${cls}">${label}</span></td>
+      </tr>`;
+  }).join("");
+
+  const day = records[$("date").value] || {};
+  $("total").textContent = students.length;
+  $("present").textContent =
+    students.filter(s => day[s.id] === "มา").length;
+  $("absent").textContent =
+    students.filter(s => day[s.id] === "ขาด").length;
+  $("alerts").textContent = list.filter(s => s.absent >= 4).length;
+}
+
+function render() {
+  renderAttendance();
+  renderStatistics();
+}
+
+$("date").addEventListener("change", renderAttendance);
+render();
+</script>
+</body>
+</html>
