@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบเช็คชื่อนักเรียนและสรุปสถิติการมาเรียน</title>
+  <!-- Tailwind CSS ผ่าน CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- ===== Header ===== -->
+  <header class="bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <h1 class="text-2xl md:text-3xl font-bold">📋 ระบบเช็คชื่อนักเรียน</h1>
+      <p class="text-indigo-100 mt-1 text-sm md:text-base">บันทึกการมาเรียนประจำวัน และสรุปสถิติรายบุคคล</p>
+    </div>
+  </header>
+
+  <!-- ===== แท็บเลือกกลุ่ม: ทั้งหมด / ชาย / หญิง ===== -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+    <div id="tabBar" class="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto"></div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- ===== โซนที่ 1: เพิ่มนักเรียนใหม่ ===== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">➕ เพิ่มนักเรียนใหม่</h2>
+      <form id="addForm" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+        <div class="md:col-span-6">
+          <label for="studentName" class="block text-sm font-medium text-slate-600 mb-1">ชื่อ-นามสกุล</label>
+          <input id="studentName" type="text" required maxlength="80" placeholder="เช่น สมชาย ใจดี"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div class="md:col-span-3">
+          <label for="studentGender" class="block text-sm font-medium text-slate-600 mb-1">เพศ</label>
+          <select id="studentGender"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option value="ชาย">ผู้ชาย</option>
+            <option value="หญิง">ผู้หญิง</option>
+          </select>
+        </div>
+        <div class="md:col-span-3">
+          <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2 transition">
+            บันทึกเพิ่มรายชื่อ
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===== โซนที่ 2: เช็คชื่อประจำวัน ===== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">✅ เช็คชื่อประจำวัน</h2>
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <label for="attDate" class="block text-sm font-medium text-slate-600 mb-1">วันที่</label>
+            <input id="attDate" type="date"
+              class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <button id="markAllPresent" type="button"
+            class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-medium rounded-lg px-4 py-2 transition">
+            ตั้งทุกคนเป็น "มา"
+          </button>
+        </div>
+      </div>
+
+      <p id="dateNote" class="text-sm mb-3 hidden"></p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-sm text-slate-500 border-b border-slate-200">
+              <th class="py-2 pr-2 w-10">#</th>
+              <th class="py-2 pr-2">ชื่อ-นามสกุล</th>
+              <th class="py-2 pr-2">เพศ</th>
+              <th class="py-2">สถานะ</th>
+              <th class="py-2 w-10"></th>
+            </tr>
+          </thead>
+          <tbody id="attendanceBody"></tbody>
+        </table>
+      </div>
+      <p id="attEmpty" class="text-center text-slate-400 py-8 hidden">ยังไม่มีรายชื่อนักเรียน กรุณาเพิ่มนักเรียนก่อน</p>
+
+      <div class="mt-4 flex justify-end">
+        <button id="saveAttendance" type="button"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-6 py-2 transition">
+          💾 บันทึกการเช็คชื่อประจำวัน
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== โซนที่ 3: สรุปสถิติ ===== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">📊 สรุปสถิติการมาเรียน</h2>
+        <div class="text-sm text-slate-500">
+          เรียงตามจำนวนวันขาดมากที่สุดก่อน ·
+          <span class="inline-block px-2 py-0.5 rounded bg-red-100 text-red-700">แถบแดง = ขาด ≥ 3 ครั้ง หรือมาเรียน &lt; 80%</span>
+        </div>
+      </div>
+
+      <!-- การ์ดสรุปภาพรวม -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="rounded-xl bg-indigo-50 p-3"><div class="text-xs text-indigo-600">นักเรียนทั้งหมด</div><div id="sumStudents" class="text-2xl font-bold text-indigo-700">0</div></div>
+        <div class="rounded-xl bg-sky-50 p-3"><div class="text-xs text-sky-600">จำนวนวันที่เช็คชื่อ</div><div id="sumDays" class="text-2xl font-bold text-sky-700">0</div></div>
+        <div class="rounded-xl bg-emerald-50 p-3"><div class="text-xs text-emerald-600">อัตราการมาเรียนเฉลี่ย</div><div id="sumAvg" class="text-2xl font-bold text-emerald-700">-</div></div>
+        <div class="rounded-xl bg-red-50 p-3"><div class="text-xs text-red-600">นักเรียนที่ต้องติดตาม</div><div id="sumAlert" class="text-2xl font-bold text-red-700">0</div></div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm md:text-base">
+          <thead>
+            <tr class="text-sm text-slate-500 border-b border-slate-200">
+              <th class="py-2 px-2">ชื่อ-นามสกุล</th>
+              <th class="py-2 px-2">เพศ</th>
+              <th class="py-2 px-2 text-center">มา</th>
+              <th class="py-2 px-2 text-center">ขาด</th>
+              <th class="py-2 px-2 text-center">ลา</th>
+              <th class="py-2 px-2 text-center">สาย</th>
+              <th class="py-2 px-2 text-center">% มาเรียน</th>
+            </tr>
+          </thead>
+          <tbody id="statsBody"></tbody>
+        </table>
+      </div>
+      <p id="statsEmpty" class="text-center text-slate-400 py-8 hidden">ยังไม่มีข้อมูลสถิติ</p>
+      <p class="text-xs text-slate-400 mt-3">* อัตราการมาเรียน = (มา + สาย) ÷ จำนวนวันที่เช็คชื่อทั้งหมด × 100</p>
+
+      <div class="mt-4 flex justify-end">
+        <button id="resetAll" type="button" class="text-sm text-red-600 hover:text-red-700 underline">ล้างข้อมูลทั้งหมด</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast แจ้งเตือน -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity"></div>
+
+<script>
+/* =====================================================
+ * 1) การตั้งค่าและตัวแปรหลัก
+ * ===================================================== */
+const STORAGE_KEY = 'attendance_app_v1';
+const STATUSES = ['มา', 'ขาด', 'ลา', 'สาย'];
+const ABSENT_ALERT_COUNT = 3;   // ขาดตั้งแต่กี่ครั้งถึงแจ้งเตือน
+const LOW_RATE_PERCENT = 80;    // อัตราการมาเรียนที่ต่ำกว่านี้ถือว่าต่ำ
+
+// สีของปุ่มสถานะแต่ละแบบ (เมื่อถูกเลือก)
+const STATUS_STYLE = {
+  'มา':   'peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:border-emerald-500',
+  'ขาด':  'peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-500',
+  'ลา':   'peer-checked:bg-sky-500 peer-checked:text-white peer-checked:border-sky-500',
+  'สาย':  'peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500',
+};
+
+// โครงสร้างข้อมูล: students = [{id,name,gender}], records = { 'YYYY-MM-DD': { [studentId]: 'มา' } }
+let state = { students: [], records: {} };
+
+// แท็บที่เลือกอยู่ตอนนี้ ('ทั้งหมด' | 'ชาย' | 'หญิง')
+let currentTab = 'ทั้งหมด';
+const TABS = [
+  { key: 'ทั้งหมด', label: '👥 ทั้งหมด',      active: 'bg-indigo-600 text-white border-indigo-600' },
+  { key: 'ชาย',     label: '👦 นักเรียนชาย',  active: 'bg-sky-500 text-white border-sky-500' },
+  { key: 'หญิง',    label: '👧 นักเรียนหญิง', active: 'bg-pink-500 text-white border-pink-500' },
+];
+
+// คืนรายชื่อนักเรียนตามแท็บที่เลือก
+function getVisibleStudents() {
+  return currentTab === 'ทั้งหมด' ? state.students : state.students.filter((s) => s.gender === currentTab);
+}
+
+/* =====================================================
+ * 2) LocalStorage: โหลด / บันทึกข้อมูล
+ * ===================================================== */
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state.students = Array.isArray(parsed.students) ? parsed.students : [];
+      state.records = parsed.records && typeof parsed.records === 'object' ? parsed.records : {};
+    }
+  } catch (e) { console.warn('โหลดข้อมูลไม่สำเร็จ', e); }
+}
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { showToast('ไม่สามารถบันทึกลงเบราว์เซอร์ได้'); }
+}
+
+/* =====================================================
+ * 3) ฟังก์ชันช่วยเหลือ
+ * ===================================================== */
+const $ = (id) => document.getElementById(id);
+
+// ป้องกัน XSS เวลาแสดงชื่อ
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function todayStr() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function formatThaiDate(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+let toastTimer;
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.remove('opacity-0');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('opacity-0'), 2200);
+}
+
+/* =====================================================
+ * 4) เพิ่ม / ลบนักเรียน
+ * ===================================================== */
+$('addForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = $('studentName').value.trim();
+  const gender = $('studentGender').value;
+  if (!name) return;
+  if (state.students.some((s) => s.name === name)) {
+    showToast('มีชื่อนี้อยู่ในระบบแล้ว');
+    return;
+  }
+  state.students.push({ id: 's' + Date.now() + Math.floor(Math.random() * 1000), name, gender });
+  saveData();
+  $('studentName').value = '';
+  // ถ้าเพศที่เพิ่มไม่ตรงกับแท็บที่เปิดอยู่ ให้สลับไปแท็บของเพศนั้นเพื่อให้เห็นรายชื่อที่เพิ่งเพิ่ม
+  if (currentTab !== 'ทั้งหมด' && currentTab !== gender) currentTab = gender;
+  renderAll();
+  showToast('เพิ่มรายชื่อเรียบร้อย');
+});
+
+function deleteStudent(id) {
+  const s = state.students.find((x) => x.id === id);
+  if (!s || !confirm(`ลบ "${s.name}" และประวัติการมาเรียนทั้งหมดของนักเรียนคนนี้?`)) return;
+  state.students = state.students.filter((x) => x.id !== id);
+  Object.values(state.records).forEach((day) => delete day[id]);
+  // ลบวันที่ที่ไม่มีข้อมูลเหลือ
+  Object.keys(state.records).forEach((d) => { if (!Object.keys(state.records[d]).length) delete state.records[d]; });
+  saveData();
+  renderAll();
+}
+
+/* =====================================================
+ * 5) ตารางเช็คชื่อประจำวัน
+ * ===================================================== */
+function renderAttendance() {
+  const date = $('attDate').value;
+  const saved = state.records[date] || {};
+  const body = $('attendanceBody');
+  const visible = getVisibleStudents();
+  $('attEmpty').classList.toggle('hidden', visible.length > 0);
+  $('attEmpty').textContent = state.students.length
+    ? 'ไม่มีนักเรียนในกลุ่มนี้'
+    : 'ยังไม่มีรายชื่อนักเรียน กรุณาเพิ่มนักเรียนก่อน';
+
+  // แจ้งว่าวันที่เลือกเคยบันทึกแล้วหรือยัง (ดูเฉพาะนักเรียนในแท็บที่เลือก)
+  const note = $('dateNote');
+  note.classList.remove('hidden');
+  if (visible.some((s) => saved[s.id])) {
+    note.textContent = `วันที่ ${formatThaiDate(date)} เคยบันทึกแล้ว — การบันทึกใหม่จะเขียนทับข้อมูลเดิม`;
+    note.className = 'text-sm mb-3 text-amber-600';
+  } else {
+    note.textContent = `วันที่ ${formatThaiDate(date)} ยังไม่ได้บันทึก (ค่าเริ่มต้นคือ "มา")`;
+    note.className = 'text-sm mb-3 text-slate-500';
+  }
+
+  body.innerHTML = visible.map((s, i) => {
+    const current = saved[s.id] || 'มา';
+    const radios = STATUSES.map((st) => `
+      <label class="cursor-pointer">
+        <input type="radio" name="st_${s.id}" value="${st}" class="sr-only peer" ${current === st ? 'checked' : ''} />
+        <span class="inline-block px-3 py-1.5 rounded-full border border-slate-300 text-sm text-slate-600 select-none transition ${STATUS_STYLE[st]}">${st}</span>
+      </label>`).join('');
+    return `
+      <tr class="border-b border-slate-100">
+        <td class="py-3 pr-2 text-slate-400">${i + 1}</td>
+        <td class="py-3 pr-2 font-medium">${esc(s.name)}</td>
+        <td class="py-3 pr-2 text-slate-500">${s.gender === 'ชาย' ? '👦 ชาย' : '👧 หญิง'}</td>
+        <td class="py-3"><div class="flex flex-wrap gap-2">${radios}</div></td>
+        <td class="py-3 text-right"><button type="button" data-del="${s.id}" title="ลบนักเรียน" class="text-slate-300 hover:text-red-500">🗑</button></td>
+      </tr>`;
+  }).join('');
+}
+
+// ปุ่มลบในตารางเช็คชื่อ (ใช้ event delegation)
+$('attendanceBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-del]');
+  if (btn) deleteStudent(btn.dataset.del);
+});
+
+$('markAllPresent').addEventListener('click', () => {
+  document.querySelectorAll('#attendanceBody input[value="มา"]').forEach((r) => (r.checked = true));
+});
+
+$('attDate').addEventListener('change', () => {
+  if (!$('attDate').value) $('attDate').value = todayStr();
+  renderAttendance();
+});
+
+// บันทึกการเช็คชื่อ
+$('saveAttendance').addEventListener('click', () => {
+  const visible = getVisibleStudents();
+  if (!visible.length) { showToast('ไม่มีนักเรียนในกลุ่มนี้'); return; }
+  const date = $('attDate').value;
+  // เริ่มจากข้อมูลเดิมของวันนั้น แล้วอัปเดตเฉพาะนักเรียนในแท็บที่เลือก (ไม่ทับข้อมูลของอีกกลุ่ม)
+  const day = { ...(state.records[date] || {}) };
+  visible.forEach((s) => {
+    const checked = document.querySelector(`input[name="st_${s.id}"]:checked`);
+    day[s.id] = checked ? checked.value : 'มา';
+  });
+  state.records[date] = day;
+  saveData();
+  renderAll();
+  showToast(`บันทึกการเช็คชื่อวันที่ ${formatThaiDate(date)} แล้ว`);
+});
+
+/* =====================================================
+ * 6) คำนวณและแสดงสถิติ (เรียงคนขาดมากสุดไว้บนสุด)
+ * ===================================================== */
+function computeStats() {
+  const visible = getVisibleStudents();
+  // นับเฉพาะวันที่มีการเช็คชื่อนักเรียนในกลุ่มที่เลือก
+  const totalDays = Object.values(state.records).filter((day) => visible.some((s) => day[s.id])).length;
+  const rows = visible.map((s) => {
+    const c = { 'มา': 0, 'ขาด': 0, 'ลา': 0, 'สาย': 0 };
+    Object.values(state.records).forEach((day) => { if (day[s.id]) c[day[s.id]]++; });
+    const recorded = c['มา'] + c['ขาด'] + c['ลา'] + c['สาย'];
+    const percent = recorded ? ((c['มา'] + c['สาย']) / recorded) * 100 : null;
+    const alert = c['ขาด'] >= ABSENT_ALERT_COUNT || (percent !== null && percent < LOW_RATE_PERCENT);
+    return { ...s, ...c, recorded, percent, alert };
+  });
+
+  // เรียง: ขาดมากสุดก่อน → ถ้าเท่ากัน % มาเรียนต่ำสุดก่อน → ชื่อ ก-ฮ
+  rows.sort((a, b) =>
+    b['ขาด'] - a['ขาด'] ||
+    (a.percent ?? 101) - (b.percent ?? 101) ||
+    a.name.localeCompare(b.name, 'th')
+  );
+  return { totalDays, rows };
+}
+
+function renderStats() {
+  const { totalDays, rows } = computeStats();
+  $('statsEmpty').classList.toggle('hidden', rows.length > 0);
+
+  $('statsBody').innerHTML = rows.map((r) => {
+    const pct = r.percent === null ? '-' : r.percent.toFixed(1) + '%';
+    const rowCls = r.alert ? 'bg-red-100 text-red-900 font-medium' : 'hover:bg-slate-50';
+    const pctCls = r.percent === null ? 'text-slate-400'
+      : r.percent < LOW_RATE_PERCENT ? 'text-red-700 font-bold' : 'text-emerald-700 font-semibold';
+    return `
+      <tr class="border-b border-slate-100 ${rowCls}">
+        <td class="py-3 px-2">${r.alert ? '⚠️ ' : ''}${esc(r.name)}</td>
+        <td class="py-3 px-2">${r.gender}</td>
+        <td class="py-3 px-2 text-center">${r['มา']}</td>
+        <td class="py-3 px-2 text-center font-bold">${r['ขาด']}</td>
+        <td class="py-3 px-2 text-center">${r['ลา']}</td>
+        <td class="py-3 px-2 text-center">${r['สาย']}</td>
+        <td class="py-3 px-2 text-center ${pctCls}">${pct}</td>
+      </tr>`;
+  }).join('');
+
+  // การ์ดสรุปภาพรวม
+  const withData = rows.filter((r) => r.percent !== null);
+  const avg = withData.length ? withData.reduce((t, r) => t + r.percent, 0) / withData.length : null;
+  $('sumStudents').textContent = rows.length;
+  $('sumDays').textContent = totalDays;
+  $('sumAvg').textContent = avg === null ? '-' : avg.toFixed(1) + '%';
+  $('sumAlert').textContent = rows.filter((r) => r.alert).length;
+}
+
+/* =====================================================
+ * 7) ล้างข้อมูลทั้งหมด
+ * ===================================================== */
+$('resetAll').addEventListener('click', () => {
+  if (!confirm('ต้องการลบรายชื่อและประวัติทั้งหมดใช่หรือไม่? การกระทำนี้ย้อนกลับไม่ได้')) return;
+  state = { students: [], records: {} };
+  saveData();
+  renderAll();
+  showToast('ล้างข้อมูลแล้ว');
+});
+
+/* =====================================================
+ * 8) เริ่มต้นระบบ
+ * ===================================================== */
+/* =====================================================
+ * แท็บ ทั้งหมด / ชาย / หญิง
+ * ===================================================== */
+function renderTabs() {
+  $('tabBar').innerHTML = TABS.map((t) => {
+    const count = t.key === 'ทั้งหมด' ? state.students.length : state.students.filter((s) => s.gender === t.key).length;
+    const cls = currentTab === t.key ? t.active : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50';
+    return `<button type="button" data-tab="${t.key}" class="whitespace-nowrap px-4 py-2 rounded-full border text-sm font-medium transition ${cls}">${t.label} (${count})</button>`;
+  }).join('');
+  // ตั้งค่าเพศในฟอร์มเพิ่มนักเรียนให้ตรงกับแท็บที่เปิดอยู่
+  if (currentTab !== 'ทั้งหมด') $('studentGender').value = currentTab;
+}
+$('tabBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-tab]');
+  if (!btn) return;
+  currentTab = btn.dataset.tab;
+  renderAll();
+});
+
+function renderAll() { renderTabs(); renderAttendance(); renderStats(); }
+
+loadData();
+$('attDate').value = todayStr();
+renderAll();
+</script>
+</body>
+</html>
